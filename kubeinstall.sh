@@ -53,6 +53,7 @@ sudo tar Cxzvf /usr/local $CONTAINERD_PKG
 echo "Installing containerd configuration file"
 sudo mkdir -p /etc/containerd/
  containerd config default > /etc/containerd/config.toml
+sed -i -e 's/SystemdCgroup = false/SystemdCgroup = true/g' ./config.toml
 wget https://raw.githubusercontent.com/containerd/containerd/main/containerd.service -o /etc/systemd/system/containerd.service
 
 

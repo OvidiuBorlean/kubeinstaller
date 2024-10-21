@@ -1,3 +1,4 @@
+
 get_latest_release() {
   curl --silent "https://api.github.com/repos/$1/$2/releases/latest" \
     | grep '"tag_name":' \
@@ -39,6 +40,7 @@ sudo ufw allow 6443/tcp
 
 install_cni () {
 
+echo "---> Install CNI"
 CNI_VERS=$(get_latest_release containernetworking plugins) # v1.5.0
 PKG_ARCH="$(dpkg --print-architecture)"
 CNI_PKG="cni-plugins-linux-$PKG_ARCH-$CNI_VERS.tgz"
@@ -51,9 +53,14 @@ curl -fLo $CNI_PKG $CNI_URL
 # install
 sudo mkdir -p /opt/cni/bin
 sudo tar Cxzvf /opt/cni/bin $CNI_PKG
+
+echo "---> Cleaning CNI Package"
+rm $CNI_PKG
 }
 
 install_runc () {
+
+echo "---> Install runc"
 
 RUNC_VER=$(get_latest_release opencontainers runc) # v1.1.12
 PKG_ARCH="$(dpkg --print-architecture)"
@@ -65,6 +72,8 @@ curl -fSLo runc.$PKG_ARCH $RUNC_URL
 
 # install
 sudo install -m 755 runc.$PKG_ARCH /usr/local/sbin/runc
+
+rm $PKG_ARCH
 
 }
 
@@ -83,12 +92,15 @@ curl -fLo $CONTAINERD_PKG $CONTAINERD_URL
 # Extract the binaries
 sudo tar Cxzvf /usr/local $CONTAINERD_PKG
 
-echo "Installing containerd configuration file"
+echo "---> Installing containerd configuration file"
 sudo mkdir -p /etc/containerd/
- containerd config default > /etc/containerd/config.toml
-sed -i -e 's/SystemdCgroup = false/SystemdCgroup = true/g' ./config.toml
-wget https://raw.githubusercontent.com/containerd/containerd/main/containerd.service -o /etc/systemd/system/containerd.service
+sudo containerd config default > /etc/containerd/config.toml
+echo "---> Configuring containerd"
+sudo sed -i -e 's/SystemdCgroup = false/SystemdCgroup = true/g' /etc/containerd/config.toml
+echo "---> Configuring Containerd service"
+sudo wget https://raw.githubusercontent.com/containerd/containerd/main/containerd.service -o /etc/systemd/system/containerd.service
 
+rm $CONTAINERD_PKG
 
 }
 
@@ -136,7 +148,9 @@ sudo kubeadm init --pod-network-cidr=10.244.0.0/16
 }
 
 install_cilium_cli () {
-  CILIUM_CLI_VERSION=$(curl -s https://raw.githubusercontent.com/cilium/cilium-cli/main/stable.txt)
+
+echo "---> Install Cilium"
+CILIUM_CLI_VERSION=$(curl -s https://raw.githubusercontent.com/cilium/cilium-cli/main/stable.txt)
 CLI_ARCH=amd64
 if [ "$(uname -m)" = "aarch64" ]; then CLI_ARCH=arm64; fi
 curl -L --fail --remote-name-all https://github.com/cilium/cilium-cli/releases/download/${CILIUM_CLI_VERSION}/cilium-linux-${CLI_ARCH}.tar.gz{,.sha256sum}
@@ -155,10 +169,10 @@ FLANNEL_URL="https://github.com/flannel-io/flannel/$FLANNEL_URL_PATH"
 kubectl apply --filename $FLANNEL_URL
 }
 
-
+#host_config
 #install_containerd
 #install_runc
 #install_cni
 #install_kubeadm
-#install_k8s
-install_cilium_cli
+install_k8s
+#install_cilium_cli
